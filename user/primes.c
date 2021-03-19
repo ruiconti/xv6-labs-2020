@@ -28,7 +28,7 @@ read_prime(int pin[])
   /* sieves prime integer */
   if(read_result > 0)
   {
-    printf(" prime %d\n", prime);
+    printf("prime %d\n", prime);
     pipe(pout);
 
     if(fork() == 0)
@@ -56,7 +56,6 @@ read_prime(int pin[])
       }
       close(pout[W]);
       close(pin[R]);
-      exit(0);
     }
   }
   /* last process, reaches end-of-seq */
@@ -81,6 +80,7 @@ main(int argc, char *argv[])
        * instead of actual data */
       write(p[W], &i, sizeof(int));
     }
+    close(p[R]);
     close(p[W]);
   }
   else
