@@ -14,13 +14,14 @@
  */
 
 
-void is_substring(char *fname, char *term)
+void print_substrings(char *fname, char *term)
 {
     /* strategy is to use strchr to find if each character of term
      * is found on fname. If it does, it checks if they're in sequential
      * order */ 
-    char *pfname, *pterm, *pfnamei;
+    char *pfname, *pterm, *ptermi, *pfnamei;
     int j=0;
+    int vseek=1; // valid seek control flag
 
     pfname = fname; pterm = term;
     for(int i=0; i<strlen(fname); i++)
@@ -31,30 +32,31 @@ void is_substring(char *fname, char *term)
             /* meaning that the beginning of both strs have matched */
             /* we set an pointer that iterates in fname */
             pfnamei = pfname;
-            for(j=0; i<strlen(term); j++) {
+            ptermi = pterm;
+            for(j=0; j<strlen(term) && vseek == 1; j++) {
                 /* now we must find consecutives matches of term (p2) inside 
                  * fname (p1) */
-                if (*pfnamei && *pterm && *pfnamei == *pterm) 
+                if (*pfnamei && *ptermi && *pfnamei == *ptermi) 
                 {
                     /* since we're adding p2 which points to term, strlen behaves
                      * unexpectedly. Hence we need to check if p2 and p3 are
                      * valid */
                     pfnamei++;
-                    pterm++;
+                    ptermi++;
                 }
                 else
                 {
                     /* if anything doesn't match, its not a substr */
-                    break;
+                    vseek = 0;
+                    //break;
                 }
             }
-            if(j == strlen(term)) {
+            if(j == strlen(term) && vseek == 1) {
                 printf("%s\n", fname);
             }
         }
-        else {
-            pfname++;
-        }
+        ++pfname;
+        vseek = 1;
     }
 
 }
@@ -86,26 +88,42 @@ find(char *dirpath, char *term)
 
   switch(st.type)
   {
-      case T_FILE:
-          fprintf(2, "find: %s is a file not a directory.", dirpath);
-          break;
-      case T_DIR:
-          strcpy(buf, dirpath);  /* copy dirpath content into buf */
-          p = buf + strlen(buf); /* points to the end of dirpath inside buf */ 
-          *p++ = '/';  /* now it adds a / after dirpath */ 
-          /* p is pointing to the end of dir/ */
-          while(read(fd, &de, sizeof(de)) == sizeof(de))
+  case T_FILE:
+      fprintf(2, "find: %s is a file not a directory.", dirpath);
+      break;
+  case T_DIR:
+      strcpy(buf, dirpath);  /* copy dirpath content into buf */
+      p = buf + strlen(buf); /* points to the end of dirpath inside buf */ 
+      *p++ = '/';  /* now it adds a / after dirpath */ 
+      /* p is pointing to the end of dir/ */
+      while(read(fd, &de, sizeof(de)) == sizeof(de))
+      {
+          if (de.inum == 0) continue;
+          /* paste next dirname */
+          memmove(p, de.name, DIRSIZ);
+          p[DIRSIZ] = 0;
+        
+          if(stat(buf, &st) < 0)
           {
-              if (de.inum == 0) continue;
-
-              is_substring(de.name, term);
-              // int compare = strcmp(term, de.name);
-              // if(strcmp(term, de.name) <= 0)
-              // {
-              //     printf("%s %s %d %s\n", de.name, term, compare, buf);
-              // }
+              fprintf(2, "find: cannot get status for file %s", de.name);
+              return;
           }
-          break;
+          if(st.type == T_DIR)
+          {
+              if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+                  continue;
+
+              find(buf, term);
+          }
+          else if(st.type == T_FILE)
+          {
+              if (!strcmp(de.name, term)) printf("%s\n", buf);
+              
+              /* support for substrings: uncomment next line */
+              //print_substrings(buf, term);
+          }
+      }
+      break;
   }
   close(fd);
 }
