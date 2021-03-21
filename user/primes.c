@@ -1,100 +1,91 @@
 #include "kernel/types.h"
 #include "user/user.h"
 
-// Requirements:
-// 1. Generate prime sieve using pipes.
-// 2. Once the first process reaches 35, it should wait on all its children 
-// grandchildren, etc.
+/* Definitions:
+ * pipe: https://man7.org/linux/man-pages/man7/pipe.7.html
+ * fork: https://man7.org/linux/man-pages/man2/fork.2.html
+ * wait: https://man7.org/linux/man-pages/man2/wait.2.html */
+/* Requirements:
+ * 1. Generate prime sieve using pipes.
+ * 2. Once the first process reaches 35, it should wait on all its children 
+ * grandchildren, etc. */
 
-#define N 33 
+#define N 35 
 #define ARR_INT_SIZE sizeof(int) * N
+#define R 0
+#define W 1
+
+int
+read_prime(int pin[])
+{
+  int prime;
+  int pout[2];
+  // printf("[%d] [%d, %d] ", getpid(), pin[R], pin[W]);
+  int read_result = read(pin[R], &prime, sizeof(prime));
+  /* [TODO]: for some reason the code hangs on read */
+  // printf("-- [%d] -- %d", read_result, prime);
+  
+  /* sieves prime integer */
+  if(read_result > 0)
+  {
+    printf("prime %d\n", prime);
+    pipe(pout);
+
+    if(fork() == 0)
+    {
+      /* This child process becomes parent after calling read_prime
+       * and reaching fork state. */
+      close(pin[R]);
+      close(pin[W]);
+      read_prime(pout);
+    }
+    else
+    {
+      int buff;
+      
+      close(pout[R]);
+      close(pin[W]);
+      /* Parent feeds for its child's 
+       * which is a parent after next fork and reaches these commands */
+      while(read(pin[R], &buff, sizeof(int)) > 0) 
+      {
+        if(buff % prime != 0)
+        {
+          write(pout[W], &buff, sizeof(int));
+        }
+      }
+      close(pout[W]);
+      close(pin[R]);
+    }
+  }
+  /* last process, reaches end-of-seq */
+  exit(0);
+}
 
 int
 main(int argc, char *argv[]) 
 {
-  int source[N];
   int i;
-  // generate array with all possible numbers from 2 to 35
-  for(i=0; i<N; i++) {
-    source[i] = i + 2;
-  }
-  // the first time
   int p[2];
-  pipe(p);
+
+  pipe(p);  /* create pipe and reserves fd 3,4 */
   if(fork() > 0)
   {
     // parent
-    write(p[1], source, ARR_INT_SIZE);
-  } else {
-    while(0)
+    // generate stream of integers
+    for(i=2; i<=N; i++)
     {
-      int p_in[2];
-      int r_source[N];
-      int w_source[N];
-      int prime, j = 0;
-      read(p[0], r_source, ARR_INT_SIZE);
-      prime = r_source[0];
-      // print prime
-      for(i=1; i<N; i++)
-      {
-        if(r_source[i] % prime != 0)
-        {
-          /* keep only non-dividing */
-          w_source[j] = r_source[i];
-          j++;
-        } else {
-          /* drop all dividing */
-          continue;
-        }
-      }
-      /* w_source holds seq for next process */
-
-      pipe(p_in);
-
-
+      /* write(int fd, char *buf, int n) 
+       * expects a *buf char. In that case, it wants the pointer
+       * instead of actual data */
+      write(p[W], &i, sizeof(int));
     }
+    close(p[R]);
+    close(p[W]);
   }
-
-
-
-  // get the first element of the sequence
-  /*
-  while(0)
+  else
   {
-    int p_right[2];
-    pipe(p_right); // fd 3, 4 created
-
-    int prime, j = 0;
-    int source_right[33];
-    if(fork() == 0)
-    {
-      // child
-      int source_left[33];
-      read(p_right[0], source_left, sizeof(int) * 33);
-      prime = source_left[0];
-      printf("prime %d", prime);
-
-      for(i=0; i<33; i++)
-      {
-        if(source_left[i] % prime == 0)
-        {
-          source_right[j] = source_left[i];
-          j++;
-        } else {
-          continue;
-        }
-      }
-      int p_new[2];
-      pipe(p_new); // fd 5, 6 created
-      write(p_new[1], source_right, sizeof(int) * 33);
-      p_right[0] = p_new[0];
-
-    } else {
-      // is first parent
-      write(p_right[1], source_right, sizeof(int) * 33); 
-    }
+    read_prime(p);
   }
-  */
-
   exit(0);
 }
