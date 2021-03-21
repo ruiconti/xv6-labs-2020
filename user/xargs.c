@@ -5,8 +5,9 @@
 
 char* next_line(char* str) 
 {
-  char line[512], *p, *out;
-  //int literal = 0;
+  char *p, *out;
+  char *line;
+  line = malloc(sizeof(char) * strlen(str));
 
   p = line;  /* initialize walking pointer to empty buffer with line */
   for(int i=0; i<strlen(str); i++)
@@ -14,13 +15,11 @@ char* next_line(char* str)
     if(str[i] == '\n')
     { 
       /* we stop when new line */
-     // literal = 1;
       break;
     }
     if(str[i] == '\\' && strlen(str) >= (i+1) && str[i+1] == 'n')  
       /* this is the same expr as above */
     {
-    //  literal = 2;
       break;
     }
     /* associate str[i] with derreferencing p = p + 1 (which is line's next
@@ -28,10 +27,11 @@ char* next_line(char* str)
      */
     *p++ = str[i];
   }
-  /* update original string to start of next line  */
-  //str = str + strlen(line) + (sizeof(char) * literal);
   out = line;
-  printf("out:%s, %d\n", out, strlen(str));
+  /* line pointer is persistant on different calls to next_line,
+   * therefore, it must be offset */
+  str = str + strlen(line) + sizeof(char);
+  line = line + strlen(line);
 
   return out;
 }
@@ -41,63 +41,53 @@ main(int argc, char *argv[])
 {
   // 1 read from stdin and split on \n
   // 2 for each split, fork and call exec on its args
-  //char buff[512];
-  char buff[512], *p, *line;
+  // reminder:
+  // argv[0] is program name (xargs)  
+  // argv[1] is argument (that is also a program name)
+  // argv[-1] is NULL
+  char buff[512], *p;
   
-  p = buff;
   if(read(STDIN, &buff, sizeof(buff)) > 0)
   {
+    p = buff;
     while(1)
     {
-      line = next_line(p);
-      p = p + strlen(line) + (sizeof(char) * 2);
-      printf("%s, %d\n", line, strlen(line));
-      if (*p == '\0') break;
+      char *line = next_line(p);
+      /* TODO: There is a bug here: if its a user input, \n equals
+       * two characters, therefore, pointer offsetting should be char*2
+       * otherwise, if it's received from another program (say find)
+       * \n is properly parsed and works as expected */
+      //p = p + strlen(line) + (sizeof(char) * 2);
+      p = p + strlen(line) + (sizeof(char));
+      if(fork() == 0)
+      {
+        char *nargv[argc];
 
+        /* copy xargs prog's arguments to new argv
+         * NOTE: in order to exec run as expected,
+         * argv[0] *must* also be program name */
+        for(int i=1, j=0; i<argc; i++, j++)
+        {
+          nargv[j] = argv[i];
+        }
+        /* put line in the end of argv */
+        nargv[argc-1] = line;
+        /* properly write a NULL at the end of arr of strs */
+        nargv[argc] = argv[argc];
+
+        exec(argv[1], nargv);
+        fprintf(2, "exec %s failed!", argv[1]);
+        exit(0);
+      }
+      else {
+        wait(0);
+      }
+
+      /* there are no more lines to read */
+      if (*p == '\0') break;
     }
   }
-  //if(read(STDIN, buff, sizeof(buff)) > 0)
-  //  /* read everything from stdin */
-  //{
-  //  char *argl;
-  //  char *nargv[argc];
-  //  while(*buff != '\0')
-  //  {
-  //    argl = next_line(buff);
-  //    if(fork() == 0)
-  //    {
-  //      // we must append argl in argv
-  //      // argv[0]: program
-  //      // argv[1] - argv[argc]: args
-  //      int i;
-  //      for(i=0; i<argc; i++)
-  //      {
-  //        if(i==argc-1)
-  //        {
-  //          nargv[i] = argl;
-  //        }
-  //        else
-  //        {
-  //          nargv[i] = argv[i]; 
-  //        }
-  //        printf("args:%s, -1: %s\n", nargv[i], argv[i]);
-  //      }
-  //      nargv[i] = argl;
-  //      printf("buff:%s\n\n", buff);
-  //      exec(argv[0], nargv);
-  //      exit(0);
-  //    }
-  //    else {
-  //      wait(0);
-  //    }
-  //  }
-  //}
 
   exit(0);
-
-
-  // must catch program and its args
-  // program is in argv[0] and its subsquent arguments in argv[i..n]
-
 
 }
