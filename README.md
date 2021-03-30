@@ -10,5 +10,5 @@ Labs are added as they are finished.
 
 ## Labs
 
-1. ✓ System utilities, [~util](https://github.com/ruiconti/xv6-labs-2020/tree/util)
-2. System calls
+1. ✓ System utilities, [~util](/util), done in 4hs
+2. ✓ System calls, [~syscall](/syscall), done in 2:20hs
