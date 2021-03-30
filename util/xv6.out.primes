@@ -1,0 +1,19 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ primes
+pr$i me 2
+prime 3
+prime 5
+prime 7
+prime 11
+prime 13
+prime 17
+prime 19
+prime 23
+prime 29
+prime 31
+qemu-system-riscv64: terminating on signal 15 from pid 13167 (<unknown process>)
