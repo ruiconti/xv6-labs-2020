@@ -108,3 +108,33 @@ sys_trace(void)
   myproc()->trapframe->t1 = n;
   return 0;
 }
+
+void
+sysinfo(struct sysinfo *si)
+{
+  si->nproc = countproc();
+  countfree(&si->freemem);
+}
+
+
+uint64
+sys_sysinfo(void)
+{
+  struct sysinfo si;
+  struct proc *p = myproc();
+  uint64 addr;
+
+  if(argaddr(0, &addr) < 0)
+    return -1;
+
+  //countfree(&si->freemem);
+  uint64 mem;
+  countfree(&mem);
+  
+  sysinfo(&si);
+
+  if(copyout(p->pagetable, addr, (char *)&si, sizeof(si)) < 0)
+    return -1;
+
+  return 0;
+}

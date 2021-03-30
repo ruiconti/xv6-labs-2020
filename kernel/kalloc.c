@@ -54,8 +54,11 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
+  // Cast that byte-page memory that was freed
+  // as a free-linked-list-node aka struct run
   r = (struct run*)pa;
 
+  // Appends to the linked-list of free-pages
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
@@ -79,4 +82,24 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+
+void
+countfree(uint64 *mem)
+{
+  struct run *t;
+  struct run *s;
+  *(mem) = 0;
+
+  acquire(&kmem.lock);
+  t = kmem.freelist;
+  s = kmem.freelist;
+  while(s)
+  {
+    s = t->next;
+    t = s;
+    *mem += PGSIZE;
+  }
+  release(&kmem.lock);
 }
